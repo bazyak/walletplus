@@ -22,30 +22,36 @@ val versionProps = java.util.Properties().apply {
     if (versionFile.exists()) versionFile.inputStream().use { load(it) }
 }
 
-val isBuilding = gradle.startParameter.taskNames.any { taskName ->
+val buildTasks = gradle.startParameter.taskNames.filter { taskName ->
     val task = taskName.substringAfterLast(':').lowercase()
     task.startsWith("assemble") || task.startsWith("bundle") || task.startsWith("install")
 }
 
-val bump = if (isBuilding) 1 else 0
+// The watch APK is built in its own Gradle invocation, and bumping again there would hand the
+// watch a different version than the phone it pairs with. So only a build that includes the phone
+// app moves the number; a watch-only build reuses whatever the phone was last built with.
+val isWearOnlyBuild = buildTasks.isNotEmpty() && buildTasks.all { taskName ->
+    taskName.removePrefix(":").startsWith("wear:")
+}
+
+val bump = if (buildTasks.isNotEmpty() && !isWearOnlyBuild) 1 else 0
 val versionMajor = versionProps.getProperty("VERSION_MAJOR")?.toIntOrNull() ?: 1
 val versionMinor = versionProps.getProperty("VERSION_MINOR")?.toIntOrNull() ?: 0
 val versionPatch = (versionProps.getProperty("VERSION_PATCH")?.toIntOrNull() ?: 0) + bump
-val appVersionCode = (versionProps.getProperty("VERSION_CODE")?.toIntOrNull() ?: 1) + bump
-val wearVersionCode = (versionProps.getProperty("WEAR_VERSION_CODE")?.toIntOrNull() ?: 1001) + bump
+val sharedVersionCode = (versionProps.getProperty("VERSION_CODE")?.toIntOrNull() ?: 1) + bump
 
-if (isBuilding) {
+if (bump > 0) {
     versionProps.setProperty("VERSION_MAJOR", versionMajor.toString())
     versionProps.setProperty("VERSION_MINOR", versionMinor.toString())
     versionProps.setProperty("VERSION_PATCH", versionPatch.toString())
-    versionProps.setProperty("VERSION_CODE", appVersionCode.toString())
-    versionProps.setProperty("WEAR_VERSION_CODE", wearVersionCode.toString())
+    versionProps.setProperty("VERSION_CODE", sharedVersionCode.toString())
     versionFile.outputStream().use { versionProps.store(it, "Updated by the build") }
 }
 
+// Both modules carry the same versionCode and versionName: they are two halves of one app, and
+// the Data Layer will not pair a phone and a watch built from different versions.
 extra["appVersionName"] = "$versionMajor.$versionMinor.$versionPatch"
-extra["appVersionCode"] = appVersionCode
-extra["wearVersionCode"] = wearVersionCode
+extra["appVersionCode"] = sharedVersionCode
 
 subprojects {
     apply(plugin = "io.gitlab.arturbosch.detekt")

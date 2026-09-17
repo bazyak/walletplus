@@ -17,7 +17,7 @@ android {
         applicationId = "com.bazyak.walletplus"
         minSdk = 30
         targetSdk = 36
-        versionCode = rootProject.extra["wearVersionCode"] as Int
+        versionCode = rootProject.extra["appVersionCode"] as Int
         versionName = rootProject.extra["appVersionName"] as String
     }
 
