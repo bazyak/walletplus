@@ -1,0 +1,293 @@
+name: Release to Google Play
+
+on:
+  push:
+    branches:
+      - 'release/**'
+  workflow_dispatch:
+    inputs:
+      release_action:
+        description: 'Release action'
+        required: true
+        default: 'build_internal'
+        type: choice
+        options:
+          - build_internal
+          - promote_internal_to_production
+      version_bump:
+        description: 'Version bump type'
+        required: false
+        default: 'patch'
+        type: choice
+        options:
+          - major
+          - minor
+          - patch
+          - none
+
+# Prevent multiple releases from running simultaneously
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  internal-release:
+    name: Build and Upload Internal AABs
+    if: github.event_name == 'push' || inputs.release_action == 'build_internal'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    env:
+      VERSION_BUMP: ${{ inputs.version_bump || 'patch' }}
+      PACKAGE_NAME: com.bazyak.walletplus
+      PHONE_INTERNAL_TRACK: internal
+      WEAR_INTERNAL_TRACK: wear:internal
+
+    steps:
+      - name: Checkout code with full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
+
+      - name: Bump version
+        id: version
+        run: |
+          bash .github/scripts/bump-version.sh
+          echo "NEW_VERSION=$(grep '^VERSION_NAME=' gradle.properties | cut -d'=' -f2)" >> $GITHUB_OUTPUT
+          echo "NEW_VERSION_CODE=$(grep '^VERSION_CODE=' gradle.properties | cut -d'=' -f2)" >> $GITHUB_OUTPUT
+          echo "NEW_WEAR_VERSION_CODE=$(grep '^WEAR_VERSION_CODE=' gradle.properties | cut -d'=' -f2)" >> $GITHUB_OUTPUT
+
+      - name: Setup keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: bash .github/scripts/setup-keystore.sh
+
+      - name: Build signed AAB
+        env:
+          KEYSTORE_FILE: ${{ github.workspace }}/release.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          echo "Building phone and Wear release AABs..."
+          ./gradlew clean :app:bundleRelease :wear:bundleRelease --no-daemon --stacktrace
+
+      - name: Verify AABs were created
+        run: |
+          if [ ! -f app/build/outputs/bundle/release/app-release.aab ]; then
+            echo "Error: phone AAB file not found"
+            exit 1
+          fi
+          if [ ! -f wear/build/outputs/bundle/release/wear-release.aab ]; then
+            echo "Error: Wear AAB file not found"
+            exit 1
+          fi
+          echo "Phone AAB build completed successfully:"
+          ls -lh app/build/outputs/bundle/release/
+          echo "Wear AAB build completed successfully:"
+          ls -lh wear/build/outputs/bundle/release/
+
+      - name: Upload phone AAB to Google Play internal testing
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: ${{ env.PACKAGE_NAME }}
+          releaseFiles: app/build/outputs/bundle/release/app-release.aab
+          track: ${{ env.PHONE_INTERNAL_TRACK }}
+          status: completed
+          inAppUpdatePriority: 2
+          changesNotSentForReview: true
+
+      - name: Upload Wear AAB to Google Play internal testing
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: ${{ env.PACKAGE_NAME }}
+          releaseFiles: wear/build/outputs/bundle/release/wear-release.aab
+          track: ${{ env.WEAR_INTERNAL_TRACK }}
+          status: completed
+          inAppUpdatePriority: 2
+          changesNotSentForReview: true
+
+      - name: Commit version bump to release branch
+        run: |
+          set -euo pipefail
+
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+          if git diff --quiet -- gradle.properties; then
+            echo "gradle.properties already matches the release version."
+            exit 0
+          fi
+
+          git add gradle.properties
+          git commit -m "Bump release branch version to ${{ steps.version.outputs.NEW_VERSION }} (phone code ${{ steps.version.outputs.NEW_VERSION_CODE }}, Wear code ${{ steps.version.outputs.NEW_WEAR_VERSION_CODE }}) [skip ci]"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+
+      - name: Create GitHub Release
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: "app/build/outputs/bundle/release/app-release.aab,wear/build/outputs/bundle/release/wear-release.aab"
+          tag: "v${{ steps.version.outputs.NEW_VERSION }}"
+          name: "Release v${{ steps.version.outputs.NEW_VERSION }}"
+          body: |
+            ## Release v${{ steps.version.outputs.NEW_VERSION }}
+
+            ### What's New
+            This release has been published to Google Play internal testing for phone and Wear OS.
+
+            ### Build Information
+            - **Version:** ${{ steps.version.outputs.NEW_VERSION }}
+            - **Phone Version Code:** ${{ steps.version.outputs.NEW_VERSION_CODE }}
+            - **Wear Version Code:** ${{ steps.version.outputs.NEW_WEAR_VERSION_CODE }}
+            - **Phone Release Track:** ${{ env.PHONE_INTERNAL_TRACK }}
+            - **Wear Release Track:** ${{ env.WEAR_INTERNAL_TRACK }}
+            - **Build Date:** ${{ github.event.head_commit.timestamp }}
+            - **Commit:** ${{ github.sha }}
+
+            ### Download
+            The phone and Wear AAB files are attached to this release and have been uploaded to Google Play Console.
+
+            ---
+            *This release was automatically created by GitHub Actions.*
+          draft: false
+          prerelease: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  promote-production:
+    name: Promote Internal Releases to Production
+    if: github.event_name == 'workflow_dispatch' && inputs.release_action == 'promote_internal_to_production'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    env:
+      PACKAGE_NAME: com.bazyak.walletplus
+      PHONE_INTERNAL_TRACK: internal
+      PHONE_PRODUCTION_TRACK: production
+      WEAR_INTERNAL_TRACK: wear:internal
+      WEAR_PRODUCTION_TRACK: wear:production
+
+    steps:
+      - name: Promote phone and Wear releases
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          set -euo pipefail
+
+          SERVICE_ACCOUNT_FILE="${RUNNER_TEMP}/google-play-service-account.json"
+          PRIVATE_KEY_FILE="${RUNNER_TEMP}/google-play-private-key.pem"
+
+          printf '%s' "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" > "$SERVICE_ACCOUNT_FILE"
+          jq -r '.private_key' "$SERVICE_ACCOUNT_FILE" > "$PRIVATE_KEY_FILE"
+
+          base64url() {
+            openssl base64 -A | tr '+/' '-_' | tr -d '='
+          }
+
+          CLIENT_EMAIL="$(jq -r '.client_email' "$SERVICE_ACCOUNT_FILE")"
+          NOW="$(date +%s)"
+          EXP="$((NOW + 3600))"
+          HEADER="$(printf '{"alg":"RS256","typ":"JWT"}' | base64url)"
+          CLAIMS="$(
+            jq -n \
+              --arg iss "$CLIENT_EMAIL" \
+              --arg scope "https://www.googleapis.com/auth/androidpublisher" \
+              --arg aud "https://oauth2.googleapis.com/token" \
+              --argjson iat "$NOW" \
+              --argjson exp "$EXP" \
+              '{iss:$iss,scope:$scope,aud:$aud,iat:$iat,exp:$exp}' | base64url
+          )"
+          SIGNATURE="$(printf '%s' "$HEADER.$CLAIMS" | openssl dgst -sha256 -sign "$PRIVATE_KEY_FILE" | base64url)"
+          JWT="$HEADER.$CLAIMS.$SIGNATURE"
+
+          ACCESS_TOKEN="$(
+            curl -sS --fail -X POST "https://oauth2.googleapis.com/token" \
+              -H "Content-Type: application/x-www-form-urlencoded" \
+              --data-urlencode "grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer" \
+              --data-urlencode "assertion=$JWT" | jq -r '.access_token'
+          )"
+
+          if [ -z "$ACCESS_TOKEN" ] || [ "$ACCESS_TOKEN" = "null" ]; then
+            echo "Error: failed to create Google Play access token"
+            exit 1
+          fi
+
+          API_BASE="https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${PACKAGE_NAME}"
+          EDIT_ID="$(
+            curl -sS --fail -X POST "${API_BASE}/edits" \
+              -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d '{}' | jq -r '.id'
+          )"
+
+          if [ -z "$EDIT_ID" ] || [ "$EDIT_ID" = "null" ]; then
+            echo "Error: failed to create Google Play edit"
+            exit 1
+          fi
+
+          promote_track() {
+            local source_track="$1"
+            local target_track="$2"
+
+            echo "Promoting ${source_track} to ${target_track}..."
+
+            local source_release
+            source_release="$(
+              curl -sS --fail "${API_BASE}/edits/${EDIT_ID}/tracks/${source_track}" \
+                -H "Authorization: Bearer ${ACCESS_TOKEN}"
+            )"
+
+            local release_count
+            release_count="$(jq '.releases // [] | length' <<< "$source_release")"
+            if [ "$release_count" -eq 0 ]; then
+              echo "Error: source track ${source_track} has no releases to promote"
+              exit 1
+            fi
+
+            local target_release
+            target_release="$(
+              jq --arg track "$target_track" \
+                '{
+                  track: $track,
+                  releases: [
+                    .releases[]
+                    | del(.userFraction, .countryTargeting)
+                    | .status = "completed"
+                  ]
+                }' <<< "$source_release"
+            )"
+
+            curl -sS --fail -X PUT "${API_BASE}/edits/${EDIT_ID}/tracks/${target_track}" \
+              -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d "$target_release" > /dev/null
+          }
+
+          promote_track "$PHONE_INTERNAL_TRACK" "$PHONE_PRODUCTION_TRACK"
+          promote_track "$WEAR_INTERNAL_TRACK" "$WEAR_PRODUCTION_TRACK"
+
+          curl -sS --fail -X POST "${API_BASE}/edits/${EDIT_ID}:commit" \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{}' > /dev/null
+
+          echo "Phone and Wear internal releases were promoted to production."

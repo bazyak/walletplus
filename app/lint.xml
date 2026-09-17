@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<lint>
+    <!-- Critical issues: error severity -->
+    <issue id="ObsoleteSdkInt" severity="error" />
+    <issue id="SetTextI18n" severity="error" />
+    <issue id="Recycle" severity="error" />
+    <issue id="CommitPrefEdits" severity="error" />
+
+    <!-- Compose best practices: error severity -->
+    <issue id="ModifierParameter" severity="error" />
+    <issue id="AutoboxingStateCreation" severity="error" />
+
+    <!-- Warnings -->
+    <issue id="UnusedResources" severity="warning" />
+    <issue id="IconMissingDensityFolder" severity="warning" />
+    <issue id="RtlHardcoded" severity="warning" />
+
+    <!-- Disabled for Compose -->
+    <issue id="ContentDescription" severity="ignore" />
+    <issue id="ViewConstructor" severity="ignore" />
+
+    <!-- Disabled for non-localized app -->
+    <issue id="HardcodedText" severity="ignore" />
+    <issue id="MissingTranslation" severity="ignore" />
+</lint>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Wallet.Wear" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/wear_splash_background</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
+
+    <style name="Theme.Wallet.Wear.Splash" parent="Theme.Wallet.Wear">
+        <item name="android:windowBackground">@drawable/wear_splash_screen</item>
+    </style>
+</resources>

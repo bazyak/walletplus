@@ -1,0 +1,41 @@
+{
+  "env": {
+    "ENABLE_TOOL_SEARCH": "auto:5"
+  },
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(./gradlew build)",
+      "Bash(./gradlew:*)",
+      "Bash(/Users/luntikius/AndroidStudioProjects/wallet/gradlew:*)",
+      "Bash(xargs ls:*)",
+      "Bash(adb:*)",
+      "Bash(tee:*)",
+      "Bash(git add:*)",
+      "Bash(git checkout:*)",
+      "Bash(git commit:*)",
+      "Bash(git stash:*)",
+      "Bash(grep -h \"testsuite \" app/build/test-results/testDebugUnitTest/TEST-*.xml)",
+      "Bash(xargs basename -a)",
+      "Bash(mkdir -p /Users/luntikius/AndroidStudioProjects/wallet/docs/plans)",
+      "Bash(/usr/libexec/java_home -v 17)",
+      "Bash(/usr/libexec/java_home -v 21)",
+      "Bash(/usr/libexec/java_home -v 11)",
+      "Bash(JAVA_HOME=$\\(/usr/libexec/java_home -v 17 || /usr/libexec/java_home -v 21 || /usr/libexec/java_home -v 11 \\) ./gradlew :app:compileDebugKotlin)",
+      "Bash(JAVA_HOME=$\\(/usr/libexec/java_home -v 17 || /usr/libexec/java_home -v 21 \\) ./gradlew :app:compileDebugKotlin)",
+      "Bash(JAVA_HOME=$\\(/usr/libexec/java_home -v 17 || /usr/libexec/java_home -v 21 \\) ./gradlew ktlintCheck)",
+      "Bash(JAVA_HOME=$\\(/usr/libexec/java_home -v 17 || /usr/libexec/java_home -v 21 \\) ./gradlew ktlintFormat)",
+      "Bash(JAVA_HOME=$\\(/usr/libexec/java_home -v 17 || /usr/libexec/java_home -v 21 \\) ./gradlew detekt)",
+      "Bash(JAVA_HOME=$\\(/usr/libexec/java_home -v 17 || /usr/libexec/java_home -v 21 \\) ./gradlew :app:compileDebugKotlin ktlintCheck detekt)",
+      "Bash(grep -E '\\\\.\\(kt|xml\\)$')",
+      "Bash(git diff *)",
+      "Read(//tmp/**)"
+    ],
+    "deny": [
+      "Read(.env*)",
+      "Bash(rm -rf:*)"
+    ]
+  },
+  "plansDirectory": "./docs/plans"
+}

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Wallet pictogram: a rounded card body with three stacked card edges and a thumb notch.
+  The strips and the notch are cut in the page background colour rather than being drawn,
+  which is why this drawable is only correct on the black timer page.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M11,12 L37,12 A5,5 0 0 1 42,17 L42,31 A5,5 0 0 1 37,36 L11,36 A5,5 0 0 1 6,31 L6,17 A5,5 0 0 1 11,12 Z" />
+
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M11.5,15 L36.5,15 A1.5,1.5 0 0 1 38,16.5 L38,17.5 L10,17.5 L10,16.5 A1.5,1.5 0 0 1 11.5,15 Z" />
+
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M11.5,20 L36.5,20 A1.5,1.5 0 0 1 38,21.5 L38,22.5 L10,22.5 L10,21.5 A1.5,1.5 0 0 1 11.5,20 Z" />
+
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M11.5,25 L36.5,25 A1.5,1.5 0 0 1 38,26.5 L38,27.5 L30,27.5 A6,6 0 0 1 18,27.5 L10,27.5 L10,26.5 A1.5,1.5 0 0 1 11.5,25 Z" />
+</vector>

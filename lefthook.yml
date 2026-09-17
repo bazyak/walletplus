@@ -1,0 +1,30 @@
+# Lefthook git hooks configuration
+# Install with: brew install lefthook (macOS) or npm install -g lefthook
+# Then run: lefthook install
+
+pre-commit:
+  parallel: false  # Sequential for consistency
+
+  commands:
+    # Stage 1: Auto-fix formatting
+    ktlint-format:
+      glob: "*.{kt,kts}"
+      run: ./gradlew ktlintFormat --quiet
+      stage_fixed: true
+
+    # Stage 2: Verify formatting
+    ktlint-check:
+      glob: "*.{kt,kts}"
+      run: ./gradlew ktlintCheck --quiet
+
+    # Stage 3: Static analysis
+    detekt:
+      glob: "*.{kt,kts}"
+      run: ./gradlew detekt --quiet
+
+    # Stage 4: Android Lint
+    android-lint:
+      glob: "*.{kt,kts,xml}"
+      run: ./gradlew lintDebug --quiet
+
+skip_on_merge: true

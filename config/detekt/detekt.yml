@@ -1,0 +1,71 @@
+build:
+  maxIssues: 0
+  excludeCorrectable: false
+
+complexity:
+  active: true
+  ComplexMethod:
+    threshold: 25
+  CyclomaticComplexMethod:
+    threshold: 50  # Compose UI functions can be complex
+  LongMethod:
+    threshold: 250  # Compose UI functions can be very long
+  LongParameterList:
+    functionThreshold: 9  # Compose functions often need many parameters
+    constructorThreshold: 7
+  TooManyFunctions:
+    thresholdInInterfaces: 15  # DAOs can have many functions
+    thresholdInClasses: 20  # Repositories and ViewModels can have many functions
+  NestedBlockDepth:
+    threshold: 6  # UI rendering logic can be deeply nested
+
+coroutines:
+  active: true
+  GlobalCoroutineUsage:
+    active: true
+  SuspendFunWithFlowReturnType:
+    active: true
+
+exceptions:
+  active: true
+  SwallowedException:
+    active: false  # Common in Result<T> pattern
+  TooGenericExceptionCaught:
+    active: false  # Result<T> pattern requires catching generic exceptions
+  PrintStackTrace:
+    active: false  # Acceptable for debugging in this app stage
+
+naming:
+  active: true
+  FunctionNaming:
+    active: false  # Disabled for Compose - Composables use PascalCase
+  MatchingDeclarationName:
+    active: false  # Multiple declarations per file is common in Compose
+
+performance:
+  active: true
+  SpreadOperator:
+    active: false  # Common in Compose
+
+potential-bugs:
+  active: true
+  ImplicitDefaultLocale:
+    active: false  # Technical formatting (hex colors) doesn't need locale
+
+style:
+  active: true
+  UnusedPrivateMember:
+    active: false  # False positives in Compose
+  UnusedParameter:
+    active: false  # Common in Compose callbacks and previews
+  MagicNumber:
+    active: false  # Too noisy for UI code
+  MaxLineLength:
+    maxLineLength: 120
+    excludeCommentStatements: true
+  ForbiddenComment:
+    active: false  # TODO comments are acceptable
+  DestructuringDeclarationWithTooManyEntries:
+    active: false  # Compose color tuples often have 4+ entries
+  ReturnCount:
+    active: false  # Color/formatting helpers have multiple returns
