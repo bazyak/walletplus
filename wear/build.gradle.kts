@@ -17,8 +17,8 @@ android {
         applicationId = "com.bazyak.walletplus"
         minSdk = 30
         targetSdk = 36
-        versionCode = rootProject.extra["appVersionCode"] as Int
-        versionName = rootProject.extra["appVersionName"] as String
+        versionCode = rootProject.extra["wearVersionCode"] as Int
+        versionName = rootProject.extra["wearVersionName"] as String
     }
 
     signingConfigs {
@@ -43,7 +43,7 @@ android {
         val variantVersionName = versionName
         outputs.all {
             (this as com.android.build.gradle.internal.api.BaseVariantOutputImpl).outputFileName =
-                "WalletPlus-wear-$variantVersionName.apk"
+                "WalletPlus (wear) - $variantVersionName.apk"
         }
     }
 

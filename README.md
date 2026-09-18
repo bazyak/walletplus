@@ -106,10 +106,12 @@ already be stale on arrival.
 
 ## Build
 
-The version is computed once in the root build script and shared with both modules — the Data
-Layer refuses to pair a phone and a watch built from different versions. The patch number and both
-version codes are bumped automatically, but only when something is actually being built, so an IDE
-sync or a test run does not move them.
+Versions are managed by the root build script. The phone and the watch carry their own numbers,
+since a change usually touches only one of them. Building a module that is behind the other catches
+it up; building the one already ahead moves it forward; equal versions always bump. Numbers only
+move when something is actually built, so an IDE sync or a test run leaves them alone.
+
+Pairing does not depend on the version: the Data Layer matches on applicationId and signing key.
 
 Release artifacts are named after the app and its version (`WalletPlus-1.0.14.apk`,
 `WalletPlus-wear-1.0.14.apk`) rather than the default `app-release.apk`. Identically named builds
